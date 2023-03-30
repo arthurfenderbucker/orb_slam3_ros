@@ -1486,6 +1486,10 @@ bool Tracking::GetStepByStep()
 }
 
 
+void Tracking::SetTimeRecentlyLost(double time){
+    time_recently_lost = time;
+}
+
 
 Sophus::SE3f Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp, string filename)
 {
@@ -1632,6 +1636,8 @@ Sophus::SE3f Tracking::GrabImageMonocular(const cv::Mat &im, const double &times
         }
         else
             mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mpCamera,mDistCoef,mbf,mThDepth,&mLastFrame,*mpImuCalib);
+        
+            
     }
 
     if (mState==NO_IMAGES_YET)
@@ -1940,7 +1946,11 @@ void Tracking::Track()
         }
         else
         {
-            MonocularInitialization();
+            if(reusingMap)
+                // cout << "Reusing map" << endl;
+                FileInitialization();
+            else
+                MonocularInitialization();
         }
 
         //mpFrameDrawer->Update(this);
@@ -2037,9 +2047,11 @@ void Tracking::Track()
                     {
                         // Relocalization
                         bOK = Relocalization();
-                        //std::cout << "mCurrentFrame.mTimeStamp:" << to_string(mCurrentFrame.mTimeStamp) << std::endl;
-                        //std::cout << "mTimeStampLost:" << to_string(mTimeStampLost) << std::endl;
-                        if(mCurrentFrame.mTimeStamp-mTimeStampLost>3.0f && !bOK)
+                        // std::cout << "mCurrentFrame.mTimeStamp:" << to_string(mCurrentFrame.mTimeStamp) << std::endl;
+                        // std::cout << "mTimeStampLost:" << to_string(mTimeStampLost) << std::endl;
+                        // std::cout << "bOK:" << to_string(bOK) << std::endl;
+
+                        if(mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost && !bOK)
                         {
                             mState = LOST;
                             Verbose::PrintMess("Track Lost...", Verbose::VERBOSITY_NORMAL);
@@ -2458,6 +2470,8 @@ void Tracking::StereoInitialization()
 
         //cout << "Active map: " << mpAtlas->GetCurrentMap()->GetId() << endl;
 
+
+
         mpLocalMapper->InsertKeyFrame(pKFini);
 
         mLastFrame = Frame(mCurrentFrame);
@@ -2480,6 +2494,59 @@ void Tracking::StereoInitialization()
     }
 }
 
+
+void Tracking::FileInitialization()
+{
+    //=================================================================================================================
+
+    cout<<"reusingMap"<<endl;
+
+    vector<KeyFrame*> vpKFs = mpAtlas->GetCurrentMap()->GetAllKeyFrames();
+    
+    cout<<"vpKFs.size()" << vpKFs.size()<<endl;
+
+    mpKeyFrameDB = mpAtlas->GetKeyFrameDatabase();
+
+    for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        KeyFrame* pKFi = vpKFs[i];
+        pKFi->ComputeBoW();
+        pKFi->UpdateConnections();
+
+        mpLocalMapper->InsertKeyFrame(pKFi);
+        mvpLocalKeyFrames.push_back(pKFi);
+    }
+    // mpAtlas->AddKeyFrame(pKFini);
+        
+    mpLastKeyFrame = vpKFs[vpKFs.size()-1];
+
+
+    mLastFrame = Frame(mCurrentFrame);
+    mnLastKeyFrameId = mpLastKeyFrame->mnId;
+    //mnLastRelocFrameId = mCurrentFrame.mnId;
+
+    mvpLocalMapPoints=mpAtlas->GetAllMapPoints();
+    mpReferenceKF = mpLastKeyFrame;
+    mCurrentFrame.mpReferenceKF = mpLastKeyFrame;
+
+
+
+    mpLocalMapper->mFirstTs=mLastFrame.mTimeStamp; //mInitialFrame->mTimeStamp;
+
+    initID = mLastFrame.mnId;
+
+    bool bOK = Relocalization();
+    // cout<<"bOK"<<bOK<<endl;
+    if(bOK)
+    {
+        mState=OK;
+    }
+    else
+    {
+       mState = RECENTLY_LOST;
+    }
+    // mState=OK;
+}
 
 void Tracking::MonocularInitialization()
 {
@@ -2561,6 +2628,7 @@ void Tracking::MonocularInitialization()
 
 void Tracking::CreateInitialMapMonocular()
 {
+
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
@@ -2700,42 +2768,55 @@ void Tracking::CreateInitialMapMonocular()
 
 void Tracking::CreateMapInAtlas()
 {
-    mnLastInitFrameId = mCurrentFrame.mnId;
-    mpAtlas->CreateNewMap();
-    if (mSensor==System::IMU_STEREO || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_RGBD)
-        mpAtlas->SetInertialSensor();
-    mbSetInit=false;
+    if(enableNewMaps){
+        mnLastInitFrameId = mCurrentFrame.mnId;
+        mpAtlas->CreateNewMap();
+        if (mSensor==System::IMU_STEREO || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_RGBD)
+            mpAtlas->SetInertialSensor();
+        mbSetInit=false;
 
-    mnInitialFrameId = mCurrentFrame.mnId+1;
-    mState = NO_IMAGES_YET;
+        mnInitialFrameId = mCurrentFrame.mnId+1;
+        mState = NO_IMAGES_YET;
 
-    // Restart the variable with information about the last KF
-    mbVelocity = false;
-    //mnLastRelocFrameId = mnLastInitFrameId; // The last relocation KF_id is the current id, because it is the new starting point for new map
-    Verbose::PrintMess("First frame id in map: " + to_string(mnLastInitFrameId+1), Verbose::VERBOSITY_NORMAL);
-    mbVO = false; // Init value for know if there are enough MapPoints in the last KF
-    if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
-    {
-        mbReadyToInitializate = false;
+        // Restart the variable with information about the last KF
+        mbVelocity = false;
+        //mnLastRelocFrameId = mnLastInitFrameId; // The last relocation KF_id is the current id, because it is the new starting point for new map
+        Verbose::PrintMess("First frame id in map: " + to_string(mnLastInitFrameId+1), Verbose::VERBOSITY_NORMAL);
+        mbVO = false; // Init value for know if there are enough MapPoints in the last KF
+        if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
+        {
+            mbReadyToInitializate = false;
+        }
+
+        if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && mpImuPreintegratedFromLastKF)
+        {
+            delete mpImuPreintegratedFromLastKF;
+            mpImuPreintegratedFromLastKF = new IMU::Preintegrated(IMU::Bias(),*mpImuCalib);
+        }
+
+        if(mpLastKeyFrame)
+            mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+
+        if(mpReferenceKF)
+            mpReferenceKF = static_cast<KeyFrame*>(NULL);
+
+        mLastFrame = Frame();
+        mCurrentFrame = Frame();
+        mvIniMatches.clear();
+
+        mbCreatedMap = true;
     }
-
-    if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) && mpImuPreintegratedFromLastKF)
+    else
     {
-        delete mpImuPreintegratedFromLastKF;
-        mpImuPreintegratedFromLastKF = new IMU::Preintegrated(IMU::Bias(),*mpImuCalib);
+        cout << "Not possible to create a new map: enableNewMaps is False"<< endl;
+        cout << "Forcing to reuse current map"<< endl;
+        mbCreatedMap = true;
     }
+}
 
-    if(mpLastKeyFrame)
-        mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+void Tracking::initFromFile(const double &timestamp){
 
-    if(mpReferenceKF)
-        mpReferenceKF = static_cast<KeyFrame*>(NULL);
 
-    mLastFrame = Frame();
-    mCurrentFrame = Frame();
-    mvIniMatches.clear();
-
-    mbCreatedMap = true;
 }
 
 void Tracking::CheckReplacedInLastFrame()

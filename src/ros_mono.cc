@@ -30,9 +30,11 @@ int main(int argc, char **argv)
     ros::NodeHandle node_handler;
     image_transport::ImageTransport image_transport(node_handler);
 
-    std::string voc_file, settings_file;
+    std::string voc_file, settings_file, map_name;
     node_handler.param<std::string>(node_name + "/voc_file", voc_file, "file_not_set");
     node_handler.param<std::string>(node_name + "/settings_file", settings_file, "file_not_set");
+    node_handler.param<std::string>(node_name + "/map_name", map_name, "demo4");
+
 
     if (voc_file == "file_not_set" || settings_file == "file_not_set")
     {
@@ -49,7 +51,15 @@ int main(int argc, char **argv)
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     sensor_type = ORB_SLAM3::System::MONOCULAR;
-    pSLAM = new ORB_SLAM3::System(voc_file, settings_file, sensor_type, enable_pangolin);
+    // pSLAM = new ORB_SLAM3::System(voc_file, settings_file, sensor_type, enable_pangolin);
+    pSLAM = new ORB_SLAM3::System(voc_file, settings_file, sensor_type, enable_pangolin,  0, std::string(), map_name);
+    
+    if(!map_name.empty()){
+        pSLAM->initFromFile(0);
+        
+    }
+
+
     ImageGrabber igb;
 
     ros::Subscriber sub_img = node_handler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage, &igb);
@@ -83,7 +93,7 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
-
+    
     // ORB-SLAM3 runs in TrackMonocular()
     Sophus::SE3f Tcw = pSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
 

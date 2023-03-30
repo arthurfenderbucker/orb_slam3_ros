@@ -350,6 +350,16 @@ void Atlas::PostLoad()
         numMP += pMi->GetAllMapPoints().size();
     }
     mvpBackupMaps.clear();
+
+    // Set the current map
+    for(Map* pMi : mspMaps)
+    {
+        mpCurrentMap = pMi;
+        mpCurrentMap->SetCurrentMap();
+        mnLastInitKFidMap = mpCurrentMap->GetMaxKFid();
+        break; // first map created
+    }
+
 }
 
 void Atlas::SetKeyFrameDababase(KeyFrameDatabase* pKFDB)

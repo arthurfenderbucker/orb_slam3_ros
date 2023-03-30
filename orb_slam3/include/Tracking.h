@@ -113,6 +113,12 @@ public:
 
     float GetImageScale();
 
+    void SetTimeRecentlyLost(double time);
+    void initFromFile(const double &timestamp);
+    bool enableNewMaps = true;
+    bool reusingMap = false;
+
+
 #ifdef REGISTER_LOOP
     void RequestStop();
     bool isStopped();
@@ -198,6 +204,8 @@ public:
     vector<double> vdTrackTotal_ms;
 #endif
 
+    bool Relocalization();
+
 protected:
 
     // Main tracking function. It is independent of the input sensor.
@@ -208,6 +216,7 @@ protected:
 
     // Map initialization for monocular
     void MonocularInitialization();
+    void FileInitialization();
     //void CreateNewMapPoints();
     void CreateInitialMapMonocular();
 
@@ -217,7 +226,6 @@ protected:
     bool TrackWithMotionModel();
     bool PredictStateIMU();
 
-    bool Relocalization();
 
     void UpdateLocalMap();
     void UpdateLocalPoints();

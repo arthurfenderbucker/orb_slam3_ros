@@ -36,10 +36,10 @@
 namespace ORB_SLAM3
 {
 
-Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
+Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;//Verbose::VERBOSITY_NORMAL;
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const int initFr, const string &strSequence):
+               const bool bUseViewer, const int initFr, const string &strSequence, const string &strMapName):
     mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
     mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false)
 {
@@ -98,6 +98,14 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         }
     }
 
+    //overwrite load atlas settings
+    if(!strMapName.empty())
+    {
+        mStrLoadAtlasFromFile = strMapName;
+        cout << "ORVERWRITING System.LoadAtlasFromFile = " << strMapName << endl<< endl;
+    }
+
+
     node = fsSettings["loopClosing"];
     bool activeLC = true;
     if(!node.empty())
@@ -145,11 +153,12 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         //mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
 
-        //cout << "KF in DB: " << mpKeyFrameDatabase->mnNumKFs << "; words: " << mpKeyFrameDatabase->mnNumWords << endl;
+        // cout << "KF in DB: " << mpKeyFrameDatabase->mnNumKFs << "; words: " << mpKeyFrameDatabase->mnNumWords << endl;
 
         loadedAtlas = true;
 
-        mpAtlas->CreateNewMap();
+        // mpAtlas->CreateNewMap();
+        
 
         //clock_t timeElapsed = clock() - start;
         //unsigned msElapsed = timeElapsed / (CLOCKS_PER_SEC / 1000);
@@ -376,7 +385,7 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const
     return Tcw;
 }
 
-Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
+Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename, bool firstFrame)
 {
 
     {
@@ -451,6 +460,19 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
 
     return Tcw;
+}
+
+
+void System::initFromFile(const double &timestamp){
+    cout<<"init from file"<<endl;
+    mpTracker->SetTimeRecentlyLost(1000000);
+    cout << "Key Frames in the current map: "<<mpAtlas->GetCurrentMap()->KeyFramesInMap()  << endl;
+    mpTracker->enableNewMaps = false;
+    mpTracker->reusingMap = true;
+
+    mpTracker->initFromFile(timestamp);
+
+    // mTimeStampLost = mCurrentFrame.mTimeStamp-mTimeStampLost;
 }
 
 
