@@ -2814,7 +2814,7 @@ void Tracking::CreateMapInAtlas()
     }
 }
 
-void Tracking::initFromFile(const double &timestamp){
+void Tracking::initFromFile(){
 
 
 }

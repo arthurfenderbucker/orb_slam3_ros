@@ -54,9 +54,9 @@ int main(int argc, char **argv)
     // pSLAM = new ORB_SLAM3::System(voc_file, settings_file, sensor_type, enable_pangolin);
     pSLAM = new ORB_SLAM3::System(voc_file, settings_file, sensor_type, enable_pangolin,  0, std::string(), map_name);
     
+    pSLAM->disableNewMaps();
     if(!map_name.empty()){
-        pSLAM->initFromFile(0);
-        
+        pSLAM->initFromFile();
     }
 
 

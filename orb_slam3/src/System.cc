@@ -463,18 +463,20 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
 }
 
 
-void System::initFromFile(const double &timestamp){
+void System::initFromFile(){
     cout<<"init from file"<<endl;
     mpTracker->SetTimeRecentlyLost(1000000);
     cout << "Key Frames in the current map: "<<mpAtlas->GetCurrentMap()->KeyFramesInMap()  << endl;
     mpTracker->enableNewMaps = false;
     mpTracker->reusingMap = true;
 
-    mpTracker->initFromFile(timestamp);
+    mpTracker->initFromFile();
 
     // mTimeStampLost = mCurrentFrame.mTimeStamp-mTimeStampLost;
 }
-
+void System::disableNewMaps(){
+    mpTracker->enableNewMaps = false;
+}
 
 
 void System::ActivateLocalizationMode()

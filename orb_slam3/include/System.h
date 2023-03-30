@@ -193,7 +193,8 @@ public:
 
     void ChangeDataset();
 
-    void initFromFile(const double &timestamp);
+    void initFromFile();
+    void disableNewMaps();
 
     float GetImageScale();
 

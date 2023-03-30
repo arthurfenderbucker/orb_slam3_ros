@@ -114,7 +114,7 @@ public:
     float GetImageScale();
 
     void SetTimeRecentlyLost(double time);
-    void initFromFile(const double &timestamp);
+    void initFromFile();
     bool enableNewMaps = true;
     bool reusingMap = false;
 
