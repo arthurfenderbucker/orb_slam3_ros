@@ -2507,6 +2507,13 @@ void Tracking::FileInitialization()
 
     mpKeyFrameDB = mpAtlas->GetKeyFrameDatabase();
 
+    // Verbose::PrintMess("Reseting Local Mapper...", Verbose::VERBOSITY_NORMAL);
+    // mpLocalMapper->RequestReset();
+    // Verbose::PrintMess("done", Verbose::VERBOSITY_NORMAL);
+
+    // mvpLocalKeyFrames.clear();
+
+
     for(size_t i=0; i<vpKFs.size(); i++)
     {
         KeyFrame* pKFi = vpKFs[i];
@@ -2535,17 +2542,21 @@ void Tracking::FileInitialization()
 
     initID = mLastFrame.mnId;
 
-    bool bOK = Relocalization();
-    // cout<<"bOK"<<bOK<<endl;
+    cout<<"relocalize "<<endl;
+
+    bool bOK = false;
+    bOK = Relocalization();
+    cout<<"bOK"<<bOK<<endl;
     if(bOK)
     {
-        mState=OK;
+    mState=OK;
     }
     else
     {
        mState = RECENTLY_LOST;
+    //    mState = NOT_INITIALIZED;
     }
-    // mState=OK;
+    mState=OK;
 }
 
 void Tracking::MonocularInitialization()
@@ -2808,8 +2819,16 @@ void Tracking::CreateMapInAtlas()
     }
     else
     {
+
         cout << "Not possible to create a new map: enableNewMaps is False"<< endl;
         cout << "Forcing to reuse current map"<< endl;
+        bool bOK = Relocalization();
+        // cout<<"bOK"<<bOK<<endl;
+        if(bOK)
+        {
+        mState=OK;
+        }
+        
         mbCreatedMap = true;
     }
 }
