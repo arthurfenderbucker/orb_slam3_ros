@@ -226,8 +226,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     }
 
     // Fix verbosity
-    // Verbose::SetTh(Verbose::VERBOSITY_QUIET);
-    Verbose::SetTh(Verbose::VERBOSITY_DEBUG);
+    Verbose::SetTh(Verbose::VERBOSITY_QUIET);
+    // Verbose::SetTh(Verbose::VERBOSITY_DEBUG);
 
 
 }
@@ -1388,6 +1388,16 @@ bool System::isLost()
     }
 }
 
+
+bool System::isTracking()
+{
+
+    if ((mpTracker->mState==Tracking::OK))
+        return true;
+    else
+        return false;
+
+}
 
 bool System::isFinished()
 {

@@ -190,6 +190,8 @@ public:
     double GetTimeFromIMUInit();
     bool isLost();
     bool isFinished();
+    bool isTracking();
+
 
     void ChangeDataset();
 

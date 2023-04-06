@@ -98,6 +98,10 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     Sophus::SE3f Tcw = pSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
 
     ros::Time msg_time = msg->header.stamp;
+    if(pSLAM->isTracking()){
+        publish_topics(msg_time);
 
-    publish_topics(msg_time);
+    }else{
+        ROS_ERROR("LOST");
+    }
 }
